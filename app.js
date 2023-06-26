@@ -1,7 +1,19 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const app = express();
-app.use(express.json()); 
+const port = 3000;
 
+
+app.use(express.json()); 
+app.use(helmet());
+app.use(cors());
+
+
+mongoose.connect('mongodb+srv://sherekhanadams:ZmsiuwUtuxFLYUhW@personal-blog-proj.gik1ekt.mongodb.net/blogDB?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true });
 const Post = require('./models/Post');
 const Comment = require('./models/Comment');
 
@@ -71,4 +83,8 @@ app.post('/posts/:id', async (req, res) => {
     } catch (err) {
         res.status(500).send({ message: err.message});
     }
+});
+
+app.listen(port, () => {
+    console.log (`server listening at http://localhost:${port} `);
 });
