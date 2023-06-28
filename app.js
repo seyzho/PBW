@@ -1,89 +1,37 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const app = express();
-const port = 3000;
+const postRoutes = require('./routes/postRoutes');
 
 
 app.use(express.json()); 
 app.use(helmet());
 app.use(cors());
 
-
-mongoose.connect('mongodb+srv://sherekhanadams:ZmsiuwUtuxFLYUhW@personal-blog-proj.gik1ekt.mongodb.net/blogDB?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true });
-const Post = require('./models/Post');
-const Comment = require('./models/Comment');
-
-
-// get all posts
-app.get('/posts', async (req, res) => {
-    try {
-        const posts = await Post.find();
-        res.send(posts);
-    } catch (err) {
-        res.status(500).send({message: err.message});
-    }
+const limiter = rateLimit({
+    windowMs: 60 * 60 * 10000, // set to 1 hour
+    max: 100 //amount of requests per hour for each ip
 });
+app.use(limiter);
+
+app.use(morgan('tiny'));
 
 
-// create post
-app.post('/posts', async (req, res) => {
-    try {
-        const post = await Post.create(req.body);
-        res.status(201).send(post);
-    } catch (err) {
-        res.status(500).send({ message: err.message});
-    }
-});
 
-// get specific post
-app.get('/posts/:id', async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.id);
-        if (!post) return res.status(404).send({ message: 'Post not found'});
-        res.send(post);
-    } catch (err) {
-        res.status(500).send({ message: err.message});
-    }
-});
+mongoose.connect(process.env.DB_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB Atlas'))
+.catch((err) => console.log('Could not connect to MongoDB Atlas', err));
 
-
-// update specific post
-app.put('/posts/:id', async (req, res) => {
-    try {
-        const post = await Post.findByIdAndUpdate(req.params.id, req.body, { new: true});
-        if (!post) return res.status(404).send({ message: 'Post not found'});
-        res.send(post);
-    } catch (err) {
-        res.status(500).send({ message: err.message});
-    }
-});
-
-// delete post
-app.delete('/posts/:id', async (req, res) => {
-    try {
-        const post = await Post.findByIdAndRemove(req.params.id);
-        if (!post) return res.status(404).send({ message: 'Post not found'});
-        res.send({ message: 'Post deleted successfully'});
-    } catch (err) {
-        res.status(500).send({ message: err.message });
-    }
-});
-
-// add comment
-app.post('/posts/:id', async (req, res) => {
-    try {
-        const comment = await Comment.create(req.body);
-        const post = await Post.findByIdAndUpdate(req.params.id, { $push: { comments: comment.id } }, { new: true});
-        if (!post) return res.status(404).send({ message: 'Post not found'});
-        res.send(post);
-    } catch (err) {
-        res.status(500).send({ message: err.message});
-    }
-});
+app.use('/posts', postRoutes);
 
 app.listen(port, () => {
     console.log (`server listening at http://localhost:${port} `);
